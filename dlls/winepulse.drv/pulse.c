@@ -244,7 +244,9 @@ static NTSTATUS pulse_process_attach(void *args)
 
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
+#ifndef __ANDROID__  /* bionic has no pthread_mutexattr_setrobust */
     pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+#endif
 
     if (pthread_mutex_init(&pulse_mutex, &attr) != 0)
         pthread_mutex_init(&pulse_mutex, NULL);
