@@ -393,6 +393,10 @@
 /* Define to 1 if 'interface_id' is a member of 'sg_io_hdr_t'. */
 #undef HAVE_SG_IO_HDR_T_INTERFACE_ID
 
+/* Define to 1 if you have the <shm/drivers/task_manager_driver.h> header
+   file. */
+#undef HAVE_SHM_DRIVERS_TASK_MANAGER_DRIVER_H
+
 /* Define to 1 if 'si_fd' is a member of 'siginfo_t'. */
 #undef HAVE_SIGINFO_T_SI_FD
 
