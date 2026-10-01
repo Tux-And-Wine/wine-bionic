@@ -19933,7 +19933,7 @@ CPPFLAGS=$ac_save_CPPFLAGS
     then
         as_fn_error $? "WinFusion Utils not found, cannot built with --enable-winfusion" "$LINENO" 5
     fi
-    rm -f conftest.err
+            rm -f conftest.err
 if ${WINFUSION_CONTROLLER_CFLAGS:+false} :
 then :
   if test ${PKG_CONFIG+y}

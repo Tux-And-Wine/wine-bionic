@@ -32,6 +32,7 @@
 #include "mmddk.h"
 #include "winreg.h"
 #include "wine/debug.h"
+#include "synth.h"
 
 /*
  * Here's how Windows stores the midiOut mapping information.
@@ -283,6 +284,62 @@ static void MIDIMAP_NotifyClient(MIDIMAPDATA* mom, WORD wMsg,
 		   wMsg, mom->midiDesc.dwInstance, dwParam1, dwParam2);
 }
 
+/* MIDI out ports are either real devices, or the built-in synthesizer that
+ * this module registers as an extra port.  The helpers below dispatch the
+ * mapper's calls to the right one; everything the synthesizer needs to
+ * know is kept in synth.c and synth_unix.c. */
+
+static BOOL	MIDIMAP_IsSynthPort(MIDIOUTPORT* port)
+{
+	return port && synth_is_port(port->uDevID);
+}
+
+static DWORD	MIDIMAP_PortOpen(MIDIOUTPORT* port)
+{
+	if (MIDIMAP_IsSynthPort(port))
+	    return synth_port_open(port->uDevID) ? MMSYSERR_NOERROR : MMSYSERR_ERROR;
+	return midiOutOpen(&port->hMidi, port->uDevID, 0L, 0L, CALLBACK_NULL);
+}
+
+static DWORD	MIDIMAP_PortClose(MIDIOUTPORT* port)
+{
+	if (MIDIMAP_IsSynthPort(port))
+	    return synth_port_close(port->uDevID);
+	return midiOutClose(port->hMidi);
+}
+
+static DWORD	MIDIMAP_PortShortMsg(MIDIOUTPORT* port, DWORD_PTR dwParam)
+{
+	if (MIDIMAP_IsSynthPort(port))
+	    return synth_port_short_msg(port->uDevID, (DWORD)dwParam);
+	return midiOutShortMsg(port->hMidi, dwParam);
+}
+
+static DWORD	MIDIMAP_PortLongMsg(MIDIOUTPORT* port, LPMIDIHDR lpMidiHdr)
+{
+	DWORD	ret;
+
+	if (MIDIMAP_IsSynthPort(port))
+	{
+	    ret = synth_port_long_msg(port->uDevID, lpMidiHdr->lpData, lpMidiHdr->dwBufferLength);
+	    /* the synthesizer plays the buffer here and now */
+	    lpMidiHdr->dwFlags |= MHDR_DONE;
+	    return ret;
+	}
+
+	midiOutPrepareHeader(port->hMidi, lpMidiHdr, sizeof(*lpMidiHdr));
+	ret = midiOutLongMsg(port->hMidi, lpMidiHdr, sizeof(*lpMidiHdr));
+	midiOutUnprepareHeader(port->hMidi, lpMidiHdr, sizeof(*lpMidiHdr));
+	return ret;
+}
+
+static DWORD	MIDIMAP_PortReset(MIDIOUTPORT* port)
+{
+	if (MIDIMAP_IsSynthPort(port))
+	    return synth_port_reset(port->uDevID);
+	return midiOutReset(port->hMidi);
+}
+
 static DWORD modOpen(DWORD_PTR *lpdwUser, LPMIDIOPENDESC lpDesc, DWORD dwFlags)
 {
     MIDIMAPDATA*	mom = HeapAlloc(GetProcessHeap(), 0, sizeof(MIDIMAPDATA));
@@ -307,8 +364,7 @@ static DWORD modOpen(DWORD_PTR *lpdwUser, LPMIDIOPENDESC lpDesc, DWORD dwFlags)
 	for (chn = 0; chn < 16; chn++)
 	{
 	    if (mom->ChannelMap[chn]->loaded) continue;
-	    if (midiOutOpen(&mom->ChannelMap[chn]->hMidi, mom->ChannelMap[chn]->uDevID,
-			    0L, 0L, CALLBACK_NULL) == MMSYSERR_NOERROR)
+	    if (MIDIMAP_PortOpen(mom->ChannelMap[chn]) == MMSYSERR_NOERROR)
 		mom->ChannelMap[chn]->loaded = 1;
 	    else
 		mom->ChannelMap[chn]->loaded = -1;
@@ -335,7 +391,7 @@ static	DWORD	modClose(MIDIMAPDATA* mom)
 	DWORD	t;
 	if (mom->ChannelMap[i] && mom->ChannelMap[i]->loaded > 0)
 	{
-	    t = midiOutClose(mom->ChannelMap[i]->hMidi);
+	    t = MIDIMAP_PortClose(mom->ChannelMap[i]);
 	    if (t == MMSYSERR_NOERROR)
 	    {
 		mom->ChannelMap[i]->loaded = 0;
@@ -373,12 +429,10 @@ static DWORD modLongData(MIDIMAPDATA* mom, LPMIDIHDR lpMidiHdr, DWORD_PTR dwPara
 	if (mom->ChannelMap[chn] && mom->ChannelMap[chn]->loaded > 0)
 	{
 	    mh.dwFlags = 0;
-	    midiOutPrepareHeader(mom->ChannelMap[chn]->hMidi, &mh, sizeof(mh));
-	    ret = midiOutLongMsg(mom->ChannelMap[chn]->hMidi, &mh, sizeof(mh));
+	    ret = MIDIMAP_PortLongMsg(mom->ChannelMap[chn], &mh);
 	    /* As of 2009, wineXYZ.drv's LongData handlers are synchronous */
 	    if (!ret && !(mh.dwFlags & MHDR_DONE))
 		FIXME("wait until MHDR_DONE\n");
-	    midiOutUnprepareHeader(mom->ChannelMap[chn]->hMidi, &mh, sizeof(mh));
 	    if (ret != MMSYSERR_NOERROR) break;
 	}
     }
@@ -439,7 +493,7 @@ static DWORD modData(MIDIMAPDATA* mom, DWORD_PTR dwParam)
 		dwParam &= ~0x0000FF00;
 		dwParam |= mom->ChannelMap[chn]->lpbPatch[patch];
 	    }
-	    ret = midiOutShortMsg(mom->ChannelMap[chn]->hMidi, dwParam);
+	    ret = MIDIMAP_PortShortMsg(mom->ChannelMap[chn], dwParam);
 	}
 	mom->runningStatus = status;
 	break;
@@ -447,7 +501,7 @@ static DWORD modData(MIDIMAPDATA* mom, DWORD_PTR dwParam)
 	for (chn = 0; chn < 16; chn++)
 	{
 	    if (mom->ChannelMap[chn]->loaded > 0)
-		ret = midiOutShortMsg(mom->ChannelMap[chn]->hMidi, dwParam);
+		ret = MIDIMAP_PortShortMsg(mom->ChannelMap[chn], dwParam);
 	}
 	/* system common message */
 	if (status <= 0xF7)
@@ -529,7 +583,7 @@ static	DWORD	modReset(MIDIMAPDATA* mom)
     {
 	if (mom->ChannelMap[chn] && mom->ChannelMap[chn]->loaded > 0)
 	{
-	    ret = midiOutReset(mom->ChannelMap[chn]->hMidi);
+	    ret = MIDIMAP_PortReset(mom->ChannelMap[chn]);
 	    if (ret != MMSYSERR_NOERROR) break;
 	}
     }
@@ -590,16 +644,18 @@ DWORD WINAPI MIDIMAP_modMessage(UINT wDevID, UINT wMsg, DWORD_PTR dwUser,
 static LRESULT MIDIMAP_drvOpen(void)
 {
     MIDIOUTCAPSW	moc;
-    unsigned		dev, i;
+    unsigned		dev, i, numRealPorts;
     BOOL                found_valid_port = FALSE;
 
     if (midiOutPorts)
 	return 0;
 
-    numMidiOutPorts = midiOutGetNumDevs();
+    numRealPorts = midiOutGetNumDevs();
+    numMidiOutPorts = numRealPorts;
+    if (synth_setup(numRealPorts)) numMidiOutPorts++;
     midiOutPorts = HeapAlloc(GetProcessHeap(), 0,
 			     numMidiOutPorts * sizeof(MIDIOUTPORT));
-    for (dev = 0; dev < numMidiOutPorts; dev++)
+    for (dev = 0; dev < numRealPorts; dev++)
     {
 	if (midiOutGetDevCapsW(dev, &moc, sizeof(moc)) == 0L)
 	{
@@ -619,6 +675,19 @@ static LRESULT MIDIMAP_drvOpen(void)
 	}
     }
 
+    if (numMidiOutPorts > numRealPorts)
+    {
+	MIDIOUTPORT*	port = &midiOutPorts[numRealPorts];
+
+	lstrcpyW(port->name, synth_port_name());
+	port->loaded = 0;
+	port->hMidi = 0;
+	port->uDevID = numRealPorts;
+	port->lpbPatch = NULL;
+	for (i = 0; i < 16; i++) port->aChn[i] = i;
+	found_valid_port = TRUE;
+    }
+
     if (!found_valid_port)
         ERR_(winediag)("No software synthesizer midi port found, Midi sound output probably won't work.\n");
 
@@ -630,6 +699,7 @@ static LRESULT MIDIMAP_drvOpen(void)
  */
 static LRESULT MIDIMAP_drvClose(void)
 {
+    synth_teardown();
     if (midiOutPorts)
     {
 	HeapFree(GetProcessHeap(), 0, midiOutPorts);

@@ -1939,6 +1939,8 @@ then
     then
         AC_MSG_ERROR([WinFusion Utils not found, cannot built with --enable-winfusion])
     fi
+    dnl MIDI output has no build-time library dependency: the mapper's built-in
+    dnl synthesizer loads libfluidsynth at run time (dlls/midimap).
     WINE_PACKAGE_FLAGS(WINFUSION_CONTROLLER,[winfusion_game_controller_ipc],,,,
         [AC_CHECK_HEADERS([shm/drivers/game_controller_driver.h],[],[WINFUSION_CONTROLLER_LIBS=""])
          AC_CHECK_LIB(winfusion_game_controller_ipc,game_controller_ipc_client_connect_from_env,[:],
