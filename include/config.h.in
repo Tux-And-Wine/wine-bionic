@@ -660,6 +660,9 @@
 /* Define to 1 if the Wine preloader is being used. */
 #undef HAVE_WINE_PRELOADER
 
+/* Define to 1 if you have the <winfusion_utils.h> header file. */
+#undef HAVE_WINFUSION_UTILS_H
+
 /* Define to 1 if you have the <X11/extensions/shape.h> header file. */
 #undef HAVE_X11_EXTENSIONS_SHAPE_H
 
@@ -841,5 +844,8 @@
 
 /* Define to 1 on platforms where this makes time_t a 64-bit type. */
 #undef __MINGW_USE_VC2005_COMPAT
+
+/* Define if building for WinFusion */
+#undef __WINFUSION__
 
 #endif /* __WINE_CONFIG_H */

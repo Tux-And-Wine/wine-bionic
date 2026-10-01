@@ -24,6 +24,7 @@ AC_ARG_ENABLE(maintainer-mode, AS_HELP_STRING([--enable-maintainer-mode],[enable
 AC_ARG_ENABLE(sast,  AS_HELP_STRING([--enable-sast],[enable static application security testing using Clang]))
 AC_ARG_ENABLE(silent-rules, AS_HELP_STRING([--enable-silent-rules],[use silent build rules (override: "make V=1")]))
 AC_ARG_ENABLE(werror, AS_HELP_STRING([--enable-werror],[treat compilation warnings as errors]))
+AC_ARG_ENABLE(winfusion, AS_HELP_STRING([--enable-winfusion], [build for winfusion app]))
 
 AC_ARG_WITH(alsa,      AS_HELP_STRING([--without-alsa],[do not use the Alsa sound support]))
 AC_ARG_WITH(capi,      AS_HELP_STRING([--without-capi],[do not use CAPI (ISDN support)]))
@@ -892,6 +893,7 @@ AC_SUBST(DLLFLAGS,"")
 AC_SUBST(LDDLLFLAGS,"")
 AC_SUBST(LDEXECFLAGS,"")
 AC_SUBST(EXTRACFLAGS,"")
+AC_SUBST(WINFUSION_PE_CFLAGS,"")
 AC_SUBST(UNIXDLLFLAGS,"-fPIC")
 AC_SUBST(UNIXLDFLAGS,["-shared -Wl,-Bsymbolic -Wl,-soname,\$(UNIXLIB)"])
 AC_SUBST(TOP_INSTALL_LIB,"")
@@ -992,21 +994,27 @@ case $host_os in
     DLLFLAGS="$DLLFLAGS -fPIC"
     LDDLLFLAGS="-fPIC"
     LDEXECFLAGS="-Wl,-pie"
-    enable_wineandroid_drv=${enable_wineandroid_drv:-yes}
     WINE_TRY_CFLAGS([-Wl,-z,defs],[UNIXLDFLAGS="$UNIXLDFLAGS -Wl,-z,defs"])
     WINE_TRY_CFLAGS([-fPIC -Wl,--export-dynamic],[WINELOADER_LDFLAGS="-Wl,--export-dynamic"])
     WINEPRELOADER_LDFLAGS="-static -nostartfiles -nodefaultlibs -Wl,-Ttext=0x7d400000"
 
-    WINE_CHECK_SONAME(GLESv2,glFlush)
-
-    if test "x$exec_prefix" = xNONE
+    if test "x$enable_winfusion" = "xyes"
     then
-      case $HOST_ARCH in
-        i386)    exec_prefix='${prefix}/x86' ;;
-        x86_64)  exec_prefix='${prefix}/x86_64' ;;
-        arm)     exec_prefix='${prefix}/armeabi-v7a' ;;
-        aarch64) exec_prefix='${prefix}/arm64-v8a' ;;
-      esac
+      AC_DEFINE(__WINFUSION__, 1, [Define if building for WinFusion])
+      WINFUSION_PE_CFLAGS="-D__WINFUSION__"
+    else
+      enable_wineandroid_drv=${enable_wineandroid_drv:-yes}
+      WINE_CHECK_SONAME(GLESv2,glFlush)
+
+      if test "x$exec_prefix" = xNONE
+      then
+        case $HOST_ARCH in
+          i386)    exec_prefix='${prefix}/x86' ;;
+          x86_64)  exec_prefix='${prefix}/x86_64' ;;
+          arm)     exec_prefix='${prefix}/armeabi-v7a' ;;
+          aarch64) exec_prefix='${prefix}/arm64-v8a' ;;
+        esac
+      fi
     fi
     ;;
 
@@ -1920,6 +1928,18 @@ then
 fi
 WINE_NOTICE_WITH(vulkan,[test "x$ac_cv_lib_soname_vulkan" = "x" -a "x$ac_cv_lib_soname_MoltenVK" = "x"],
                  [libvulkan and libMoltenVK ${notice_platform}development files not found, Vulkan won't be supported.])
+
+dnl **** Check for WinFusion Utils ****
+if test "x$enable_winfusion" = "xyes"
+then
+    WINE_PACKAGE_FLAGS(WINFUSION_UTILS,[winfusion_utils],,,,
+        [AC_CHECK_HEADERS([winfusion_utils.h])
+         AC_CHECK_LIB(winfusion_utils,get_winfusion_home,[:],[WINFUSION_UTILS_LIBS=""],[$WINFUSION_UTILS_LIBS])])
+    if test -z "$WINFUSION_UTILS_LIBS"
+    then
+        AC_MSG_ERROR([WinFusion Utils not found, cannot built with --enable-winfusion])
+    fi
+fi
 
 dnl **** Check for gcc specific options ****
 
