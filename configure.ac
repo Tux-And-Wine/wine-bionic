@@ -996,7 +996,13 @@ case $host_os in
     LDEXECFLAGS="-Wl,-pie"
     WINE_TRY_CFLAGS([-Wl,-z,defs],[UNIXLDFLAGS="$UNIXLDFLAGS -Wl,-z,defs"])
     WINE_TRY_CFLAGS([-fPIC -Wl,--export-dynamic],[WINELOADER_LDFLAGS="-Wl,--export-dynamic"])
-    WINEPRELOADER_LDFLAGS="-static -nostartfiles -nodefaultlibs -Wl,-Ttext=0x7d400000"
+    dnl NDK r29 defaults to Android packed relocations, which the device-side
+    dnl loader cannot process; force plain DT_RELA.
+    WINE_TRY_CFLAGS([-Wl,--pack-dyn-relocs=none],[LDFLAGS="$LDFLAGS -Wl,--pack-dyn-relocs=none"])
+    dnl Keep read-only data in its own segment: without --rosegment lld merges
+    dnl .text and rodata into one LOAD at file offset 0, leaving a 2 GB hole
+    dnl before the address the preloader is linked at.
+    WINEPRELOADER_LDFLAGS="-static -nostartfiles -nodefaultlibs -Wl,-Ttext=0x7d400000 -Wl,--rosegment"
 
     if test "x$enable_winfusion" = "xyes"
     then
