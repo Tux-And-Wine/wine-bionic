@@ -651,6 +651,8 @@ DELAYLOADFLAG
 MSVCRTFLAGS
 WINFUSION_TASKMGR_LIBS
 WINFUSION_TASKMGR_CFLAGS
+WINFUSION_CONTROLLER_LIBS
+WINFUSION_CONTROLLER_CFLAGS
 WINFUSION_UTILS_LIBS
 WINFUSION_UTILS_CFLAGS
 NETAPI_LIBS
@@ -1902,6 +1904,8 @@ NETAPI_CFLAGS
 NETAPI_LIBS
 WINFUSION_UTILS_CFLAGS
 WINFUSION_UTILS_LIBS
+WINFUSION_CONTROLLER_CFLAGS
+WINFUSION_CONTROLLER_LIBS
 WINFUSION_TASKMGR_CFLAGS
 WINFUSION_TASKMGR_LIBS'
 
@@ -2782,6 +2786,12 @@ Some influential environment variables:
               C compiler flags for winfusion_utils, overriding pkg-config
   WINFUSION_UTILS_LIBS
               Linker flags for winfusion_utils, overriding pkg-config
+  WINFUSION_CONTROLLER_CFLAGS
+              C compiler flags for winfusion_game_controller_ipc, overriding
+              pkg-config
+  WINFUSION_CONTROLLER_LIBS
+              Linker flags for winfusion_game_controller_ipc, overriding
+              pkg-config
   WINFUSION_TASKMGR_CFLAGS
               C compiler flags for winfusion_task_manager_ipc, overriding
               pkg-config
@@ -19924,6 +19934,103 @@ CPPFLAGS=$ac_save_CPPFLAGS
         as_fn_error $? "WinFusion Utils not found, cannot built with --enable-winfusion" "$LINENO" 5
     fi
     rm -f conftest.err
+if ${WINFUSION_CONTROLLER_CFLAGS:+false} :
+then :
+  if test ${PKG_CONFIG+y}
+then :
+  WINFUSION_CONTROLLER_CFLAGS=`$PKG_CONFIG --cflags winfusion_game_controller_ipc 2>conftest.err`
+fi
+fi
+
+if ${WINFUSION_CONTROLLER_LIBS:+false} :
+then :
+  if test ${PKG_CONFIG+y}
+then :
+  WINFUSION_CONTROLLER_LIBS=`$PKG_CONFIG --libs winfusion_game_controller_ipc 2>/dev/null`
+fi
+fi
+
+
+printf "%s\n" "$as_me:${as_lineno-$LINENO}: winfusion_game_controller_ipc cflags: $WINFUSION_CONTROLLER_CFLAGS" >&5
+printf "%s\n" "$as_me:${as_lineno-$LINENO}: winfusion_game_controller_ipc libs: $WINFUSION_CONTROLLER_LIBS" >&5
+if test -s conftest.err; then
+     printf %s "$as_me:${as_lineno-$LINENO}: winfusion_game_controller_ipc errors: " >&5
+     cat conftest.err >&5
+fi
+rm -f conftest.err
+ac_save_CPPFLAGS=$CPPFLAGS
+CPPFLAGS="$CPPFLAGS $WINFUSION_CONTROLLER_CFLAGS"
+       for ac_header in shm/drivers/game_controller_driver.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "shm/drivers/game_controller_driver.h" "ac_cv_header_shm_drivers_game_controller_driver_h" "$ac_includes_default"
+if test "x$ac_cv_header_shm_drivers_game_controller_driver_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SHM_DRIVERS_GAME_CONTROLLER_DRIVER_H 1" >>confdefs.h
+
+else case e in #(
+  e) WINFUSION_CONTROLLER_LIBS="" ;;
+esac
+fi
+
+done
+         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for game_controller_ipc_client_connect_from_env in -lwinfusion_game_controller_ipc" >&5
+printf %s "checking for game_controller_ipc_client_connect_from_env in -lwinfusion_game_controller_ipc... " >&6; }
+if test ${ac_cv_lib_winfusion_game_controller_ipc_game_controller_ipc_client_connect_from_env+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e) ac_check_lib_save_LIBS=$LIBS
+LIBS="-lwinfusion_game_controller_ipc $WINFUSION_CONTROLLER_LIBS $PTHREAD_LIBS $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.
+   The 'extern "C"' is for builds by C++ compilers;
+   although this is not generally supported in C code supporting it here
+   has little cost and some practical benefit (sr 110532).  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char game_controller_ipc_client_connect_from_env (void);
+int
+main (void)
+{
+return game_controller_ipc_client_connect_from_env ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_winfusion_game_controller_ipc_game_controller_ipc_client_connect_from_env=yes
+else case e in #(
+  e) ac_cv_lib_winfusion_game_controller_ipc_game_controller_ipc_client_connect_from_env=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_winfusion_game_controller_ipc_game_controller_ipc_client_connect_from_env" >&5
+printf "%s\n" "$ac_cv_lib_winfusion_game_controller_ipc_game_controller_ipc_client_connect_from_env" >&6; }
+if test "x$ac_cv_lib_winfusion_game_controller_ipc_game_controller_ipc_client_connect_from_env" = xyes
+then :
+  :
+else case e in #(
+  e) WINFUSION_CONTROLLER_LIBS="" ;;
+esac
+fi
+
+CPPFLAGS=$ac_save_CPPFLAGS
+
+    if test -z "$WINFUSION_CONTROLLER_LIBS"
+    then
+        as_fn_error $? "WinFusion GameController IPC client not found, cannot build with --enable-winfusion" "$LINENO" 5
+    fi
+    rm -f conftest.err
 if ${WINFUSION_TASKMGR_CFLAGS:+false} :
 then :
   if test ${PKG_CONFIG+y}
@@ -24598,6 +24705,8 @@ NETAPI_CFLAGS = $NETAPI_CFLAGS
 NETAPI_LIBS = $NETAPI_LIBS
 WINFUSION_UTILS_CFLAGS = $WINFUSION_UTILS_CFLAGS
 WINFUSION_UTILS_LIBS = $WINFUSION_UTILS_LIBS
+WINFUSION_CONTROLLER_CFLAGS = $WINFUSION_CONTROLLER_CFLAGS
+WINFUSION_CONTROLLER_LIBS = $WINFUSION_CONTROLLER_LIBS
 WINFUSION_TASKMGR_CFLAGS = $WINFUSION_TASKMGR_CFLAGS
 WINFUSION_TASKMGR_LIBS = $WINFUSION_TASKMGR_LIBS
 MSVCRTFLAGS = $MSVCRTFLAGS

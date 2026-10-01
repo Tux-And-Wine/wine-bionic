@@ -1939,6 +1939,14 @@ then
     then
         AC_MSG_ERROR([WinFusion Utils not found, cannot built with --enable-winfusion])
     fi
+    WINE_PACKAGE_FLAGS(WINFUSION_CONTROLLER,[winfusion_game_controller_ipc],,,,
+        [AC_CHECK_HEADERS([shm/drivers/game_controller_driver.h],[],[WINFUSION_CONTROLLER_LIBS=""])
+         AC_CHECK_LIB(winfusion_game_controller_ipc,game_controller_ipc_client_connect_from_env,[:],
+             [WINFUSION_CONTROLLER_LIBS=""],[$WINFUSION_CONTROLLER_LIBS $PTHREAD_LIBS])])
+    if test -z "$WINFUSION_CONTROLLER_LIBS"
+    then
+        AC_MSG_ERROR([WinFusion GameController IPC client not found, cannot build with --enable-winfusion])
+    fi
     WINE_PACKAGE_FLAGS(WINFUSION_TASKMGR,[winfusion_task_manager_ipc],,,,
         [AC_CHECK_HEADERS([shm/drivers/task_manager_driver.h],[],[WINFUSION_TASKMGR_LIBS=""])
          AC_CHECK_LIB(winfusion_task_manager_ipc,task_manager_ipc_client_connect_from_env,[:],
